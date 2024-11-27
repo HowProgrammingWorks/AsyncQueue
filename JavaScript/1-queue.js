@@ -21,14 +21,11 @@ class Queue extends EventEmitter {
 
   add(task) {
     const hasChannel = this.count < this.concurrency;
-    if (hasChannel) {
-      this.next(task);
-      return;
-    }
+    if (hasChannel) return void this.next(task);
     this.waiting.push({ task, start: Date.now() });
   }
 
-  next(task) {
+  async next(task) {
     this.count++;
     let timer = null;
     let finished = false;
@@ -48,13 +45,12 @@ class Queue extends EventEmitter {
       }, this.timeout);
     }
     const [process] = this.listeners('process');
-    process(task)
-      .then((result) => {
-        this.finish(null, result);
-      })
-      .catch((err) => {
-        this.finish(err);
-      });
+    try {
+      const result = await process(task);
+      this.finish(null, result);
+    } catch (err) {
+      this.finish(err);
+    }
   }
 
   takeNext() {
@@ -69,15 +65,11 @@ class Queue extends EventEmitter {
       }
     }
     this.next(task);
-    return;
   }
 
   finish(err, res) {
-    if (err) {
-      this.emit('failure', err);
-    } else {
-      this.emit('success', res);
-    }
+    if (err) this.emit('failure', err);
+    else this.emit('success', res);
     this.emit('done', err, res);
     if (this.count === 0) this.emit('drain');
   }
