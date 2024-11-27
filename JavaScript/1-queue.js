@@ -44,6 +44,7 @@ class Queue extends EventEmitter {
         finish(err, task);
       }, this.timeout);
     }
+
     const [process] = this.listeners('process');
     try {
       const result = await process(task);
@@ -84,6 +85,9 @@ const queue = new Queue({
   process: async (task) => {
     await timers.setTimeout(task.interval);
     return task;
+  },
+  done: (error, task) => {
+    console.log('Done:', { error, task });
   },
   success: (task) => {
     console.log('Success:', { task });
